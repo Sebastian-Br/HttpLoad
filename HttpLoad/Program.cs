@@ -19,10 +19,36 @@ foreach(WebPage w in configuration.WebPages)
     Console.WriteLine("Target: " + w.BaseUrl);
 }
 
+int taskCount = -1;
+
+Console.WriteLine("----------------------------------------");
+Console.WriteLine("Welcome to the Http-Load tool! This tool works by going through a list of URLs & URIs specified in the appsettings.json.");
+Console.WriteLine("\nSome target servers may refuse a connection when requests are sent too quickly - i.e. requests time out.\nTo stop this from interfering with the load-cycle (task), the tool may choose to skip that URL.");
+Console.WriteLine("A single task is equivalent to ~ 80-100 kB/s averaged over a 10s interval (may be much higher at a short interval)");
+Console.WriteLine("If you want to use the machine to work, watch streams, play games, etc., you should set the task-count accordingly.");
+Console.WriteLine("Note that it takes time for the tool to adapt to the connectivity of remote hosts; i.e. it has to collect data as to which URLs are unreachable.");
+Console.WriteLine("This means that the datarate will continuously increase.");
+Console.WriteLine("Some hosts always block requests sent by this tool; I haven't yet figured out why.");
+
+while (taskCount < 1)
+{
+    Console.Write("\nPlease enter the amount of tasks (load-cycles) to be created: ");
+    try
+    {
+        string str_taskCount = Console.ReadLine();
+        taskCount = int.Parse(str_taskCount);
+    }
+    catch (Exception ex)
+    {
+
+    }
+
+    Console.WriteLine("\nSetting Task-Count to: " + taskCount);
+}
+
 System.Threading.Thread.Sleep(3000);
 BandwithMgr bandwithMgr = new(10);
 List<Task> tasks = new();
-int taskCount = 4;
 int taskRunTimeSeconds = configuration.WebPages.Count / 2;
 for(int i = 0; i < taskCount; i++)
 {
