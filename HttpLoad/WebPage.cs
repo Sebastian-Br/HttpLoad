@@ -16,7 +16,7 @@ namespace HttpLoad
             URIindex = 0;
             TotalAttempts = 0;
             RecentFailures = 0;
-            RecentFailuresMax = 30;
+            RecentFailuresMax = 50;
             RNG = new();
             PingsTimeout = 500;
             PingCount = 10;
@@ -57,9 +57,17 @@ namespace HttpLoad
             try
             {
                 TotalAttempts++;
+                if (URIindex >= URIs.Count)
+                {
+                    URIindex = 0;
+                }
+                uri = URIs[URIindex];
+                URIindex++;
+
+
                 if (RecentFailures > RecentFailuresMax)
                 {
-                    RecentFailures = RecentFailuresMax; // max 20
+                    RecentFailures = RecentFailuresMax;
                 }
                 else if (RecentFailures < 0)
                 {
@@ -78,7 +86,7 @@ namespace HttpLoad
                 if (RecentFailures > 0) // check if to SKIP this Http-Get.
                 {
                     //Console.WriteLine("TotalAttempts: " + TotalAttempts + " Recent Failures: " + RecentFailures + "/" + RecentFailuresMax + ", RecentPingFailures: " + RecentPingFailures + "/10 - " + BaseUrl);
-                    if ((TotalAttempts+ RNG.Next(0,10)) % (1 + RecentFailures) != 0) // for 1 recent failure, only every 2nd request will be sent.
+                    if ((TotalAttempts+ RNG.Next(0,31)) % (1 + RecentFailures) != 0) // for 1 recent failure, only every 2nd request will be sent.
                     {
                         if(((TotalAttempts + RNG.Next(0, 10)) % (1+RecentPingFailures)) == 0)
                         {
@@ -114,17 +122,8 @@ namespace HttpLoad
                         }
                     }
                 }
-
-
-                if (URIindex >= URIs.Count)
-                {
-                    URIindex = 0;
-                }
-
                 
-                uri = URIs[URIindex];
                 HttpResponseMessage response;
-                URIindex++;
 
                 if (RecentFailures > 5)
                 {
@@ -145,12 +144,18 @@ namespace HttpLoad
                 if (responseBody.Length < 500)
                 {
                     Console.ForegroundColor = ConsoleColor.DarkYellow;
-                    Console.WriteLine("Reply too short (" + responseBody.Length + ") from " + BaseUrl + uri);
+                    Console.WriteLine("Reply too short (" + responseBody.Length + ") from " + BaseUrl + uri + ":\n" + responseBody);
                     Console.ForegroundColor = ConsoleColor.White;
                     RecentFailures++;
                 }
                 else
                 {
+                    if(RecentFailures > 1)
+                    {
+                        Console.ForegroundColor = ConsoleColor.Cyan;
+                        Console.WriteLine("***Success!*** RecentFailures from " + RecentFailures + " to " + (RecentFailures - 1) + " @ " + BaseUrl + " w/ " + responseBytesCount + "[Bytes]");
+                        Console.ForegroundColor = ConsoleColor.White;
+                    }
                     RecentFailures--;
                 }
 
@@ -175,8 +180,8 @@ namespace HttpLoad
                 Console.ForegroundColor = ConsoleColor.White;
             }
 
-            URIindex++;
             RecentFailures++;
+            Console.WriteLine("RecentFailures is now " + RecentFailures);
             return null;
         }
 
