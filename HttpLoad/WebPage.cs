@@ -140,6 +140,13 @@ namespace HttpLoad
                 }
 
                 int responseBytesCount = responseBody.Length + 128;
+                /*if (BaseUrl.Contains("interfax"))
+                {
+                    if(uri == "")
+                    {
+                        Console.WriteLine("***********!*!!*!*!*!*!*!*!Accessed: " + BaseUrl + uri + " | Bytes: " + responseBytesCount);
+                    }
+                }*/
                 //Console.WriteLine("Accessed: " + BaseUrl + uri + " | Bytes: " + responseBytesCount);
                 if (responseBody.Length < 500)
                 {
