@@ -80,15 +80,22 @@ double totalGBreceived = 0.0;
 double currentDataRateKiloBytes = 0.0;
 while (true)
 {
-    hoursSinceTasksStarted = (DateTime.Now - TasksStartedTime).TotalHours;
-    totalGBreceived = bandwithMgr.GetTotalDataReceived();
-    currentDataRateKiloBytes = bandwithMgr.GetDataRate() / (1000.0);
-    Console.ForegroundColor = ConsoleColor.Green;
-    Console.WriteLine("#########\nDATARATE (kB/s): " + currentDataRateKiloBytes);
-    Console.WriteLine("Total Data Received: " + totalGBreceived + " [GB] @~ " + totalGBreceived / hoursSinceTasksStarted + " [GB/h]" + 
-        "\n#########");
-    Console.ForegroundColor = ConsoleColor.White;
-    Task.Delay(10000).Wait();
+    try
+    {
+        hoursSinceTasksStarted = (DateTime.Now - TasksStartedTime).TotalHours;
+        totalGBreceived = bandwithMgr.GetTotalDataReceived();
+        currentDataRateKiloBytes = bandwithMgr.GetDataRate() / (1000.0);
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.WriteLine("#########\nDATARATE (kB/s): " + currentDataRateKiloBytes);
+        Console.WriteLine("Total Data Received: " + totalGBreceived + " [GB] @~ " + totalGBreceived / hoursSinceTasksStarted + " [GB/h]" +
+            "\n#########");
+        Console.ForegroundColor = ConsoleColor.White;
+        Task.Delay(10000).Wait();
+    }
+    catch (Exception ex)
+    {
+        logger.Error(ex);
+    }
 }
 
 async Task LoadCycle()
@@ -97,10 +104,17 @@ async Task LoadCycle()
     {
         foreach (WebPage page in configuration.WebPages)
         {
-            BandwithEvent bandwithEvent = await page.LoadURI();
-            if(bandwithEvent != null)
+            try
             {
-                bandwithMgr.AddEvent(bandwithEvent);
+                BandwithEvent bandwithEvent = await page.LoadURI();
+                if (bandwithEvent != null)
+                {
+                    bandwithMgr.AddEvent(bandwithEvent);
+                }
+            }
+            catch(Exception ex)
+            {
+                logger.Error(ex);
             }
         }
     }
