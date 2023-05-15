@@ -14,9 +14,14 @@ The 'MaxBandwith_GigabytePerHour' setting is a WiP.
 using HttpLoad;
 using System.Text.Json;
 using NLog;
+using System.Reflection;
 
 Logger logger = NLog.LogManager.GetCurrentClassLogger();
 Configuration configuration = new();
+
+string assemblyPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+Directory.SetCurrentDirectory(assemblyPath);
+Console.WriteLine("assemblyPath= " + assemblyPath);
 if (!File.Exists("appsettings.json"))
 {
     Console.WriteLine("appsettings.json not found!");
@@ -119,8 +124,8 @@ while (true) // displays datarate statistics every 10 seconds after all tasks ha
     try
     {
         hoursSinceTasksStarted = (DateTime.Now - TasksStartedTime).TotalHours;
+        currentDataRateKiloBytes = (bandwithMgr.GetDataRateBytesPerSecond()) / (1000.0);
         totalGBreceived = bandwithMgr.GetTotalDataReceivedGB();
-        currentDataRateKiloBytes = bandwithMgr.GetDataRate_BytesPerSecond() / (1000.0);
         dataRateGBperHour = totalGBreceived / hoursSinceTasksStarted;
 
         Console.ForegroundColor = ConsoleColor.Green;
@@ -128,7 +133,6 @@ while (true) // displays datarate statistics every 10 seconds after all tasks ha
         Console.WriteLine("Total Data Received: " + totalGBreceived + " [GB] @~ " + dataRateGBperHour + " [GB/h]" +
             "\n#########");
         Console.ForegroundColor = ConsoleColor.White;
-        //Task.Delay(10000).Wait();
         await Task.Delay(10000);
     }
     catch (Exception ex)
@@ -151,12 +155,11 @@ async Task LoadCycle()
         {
             try
             {
-                await Task.Delay(1 + waitTimeInBetweenHttpGet_Ms); // there might still exist a bug that can crash the application; adding a short delay here *might* fix it
-                BandwithEvent bandwithEvent = await page.LoadURI();
-                if (bandwithEvent != null)
+                await Task.Delay(1 + waitTimeInBetweenHttpGet_Ms);
+                int receivedBytes = await page.LoadURI();
+                if (receivedBytes > 0)
                 {
-                    bandwithMgr.AddBandwidthEvent(bandwithEvent);
-                    
+                    bandwithMgr.AddReceivedBytes(receivedBytes);
                 }
             }
             catch(Exception ex)
@@ -176,7 +179,7 @@ async Task AdjustDataRate()
     double fastUpdatingDataRateGBperHour = 0.0;
     while (true)
     {
-        fastUpdatingDataRateGBperHour = (bandwithMgr.GetDataRate_BytesPerSecond_DontRemoveEvents() * 3600.0) / 1000000000.0;
+        fastUpdatingDataRateGBperHour = ((bandwithMgr.GetDataRateBytesPerSecond()) * 3600.0) / 1000000000.0;
         if (fastUpdatingDataRateGBperHour > 1.05 * configuration.MaxBandwith_GigabytePerHour)
         {
             waitTimeInBetweenHttpGet_Ms += 5;

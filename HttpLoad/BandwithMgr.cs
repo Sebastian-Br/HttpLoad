@@ -13,12 +13,16 @@ namespace HttpLoad
     {
         public BandwithMgr(int timeout)
         {
-            BandwithEvents = new();
             Timeout = timeout;
             TotalDataGB = 0;
+            BytesReceivedDuringLastTimeout = 0;
+            BytesReceivedDuringTimeoutTmp = 0;
+            Task.Run(() => ContinuouslyClearTmpReceivedData());
         }
 
-        private List<BandwithEvent> BandwithEvents { get; set; }
+        private int BytesReceivedDuringLastTimeout;
+
+        private int BytesReceivedDuringTimeoutTmp;
 
         /// <summary>
         /// The time after which a BandwithEvent is removed from the list
@@ -29,58 +33,27 @@ namespace HttpLoad
         /// Adds one such event and updates the TotalDataGB (received).
         /// </summary>
         /// <param name="b">The BandwidthEvent to Add</param>
-        public void AddBandwidthEvent(BandwithEvent b)
+        public void AddReceivedBytes(int receivedBytes)
         {
-            if (BandwithEvents.Count < 1000000)
-            {
-                BandwithEvents.Add(b);
-                TotalDataGB += (double)b.BytesReceived / 1000000000.0;
-            }
-
+            Interlocked.Add(ref BytesReceivedDuringTimeoutTmp, receivedBytes);
         }
 
         private double TotalDataGB { get; set; }
 
-        /// <summary>
-        /// Checks if a BandwithEvent has timed out. If so, removes it from the list.
-        /// Adds up all data received over a *Timeout* seconds period.
-        /// </summary>
-        /// <returns>Returns the average datarate during the Timeout period</returns>
-        public double GetDataRate_BytesPerSecond()
+        public double GetDataRateBytesPerSecond()
         {
-            int Bytes = 0;
-            foreach(BandwithEvent bandwithEvent in BandwithEvents.ToList())
-            {
-                if(bandwithEvent.EventTime.AddSeconds(Timeout) >= DateTime.Now)
-                {
-                    Bytes += bandwithEvent.BytesReceived;
-                }
-                else
-                {
-                    BandwithEvents.Remove(bandwithEvent);
-                }
-            }
-
-            return Bytes / (double)Timeout;
+            return (double)BytesReceivedDuringLastTimeout / (double) Timeout;
         }
 
-        /// <summary>
-        /// Adds up all data received over a *Timeout* seconds period.
-        /// Does not remove and BandwithEvents because calling this function around the same time might corrupt the list.
-        /// </summary>
-        /// <returns>Returns the average datarate during the Timeout period</returns>
-        public double GetDataRate_BytesPerSecond_DontRemoveEvents()
+        private async Task ContinuouslyClearTmpReceivedData()
         {
-            int Bytes = 0;
-            foreach (BandwithEvent bandwithEvent in BandwithEvents.ToList())
+            while(true)
             {
-                if (bandwithEvent.EventTime.AddSeconds(Timeout) >= DateTime.Now)
-                {
-                    Bytes += bandwithEvent.BytesReceived;
-                }
+                await Task.Delay(1000 * Timeout);
+                BytesReceivedDuringLastTimeout = Volatile.Read(ref BytesReceivedDuringTimeoutTmp);
+                Volatile.Write(ref BytesReceivedDuringTimeoutTmp, 0);
+                TotalDataGB += ((double)BytesReceivedDuringLastTimeout) / 1000000000.0;
             }
-
-            return Bytes / (double)Timeout;
         }
 
         public double GetTotalDataReceivedGB()

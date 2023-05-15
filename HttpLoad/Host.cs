@@ -66,7 +66,7 @@ namespace HttpLoad
         /// Loads the URL+URI if possible.
         /// </summary>
         /// <returns>A BandwithEvent object detailling the amount of data transferred.</returns>
-        public async Task<BandwithEvent> LoadURI()
+        public async Task<int> LoadURI()
         {
             string uri = "";
             try
@@ -94,10 +94,10 @@ namespace HttpLoad
                 {
                     if ((TotalRequestAttempts + RNG.Next(0,31)) % (1 + RecentConnectionFailures) != 0) // for 1 recent failure, only every 2nd request will be sent.
                     {
-                        Console.ForegroundColor = ConsoleColor.Blue;
-                        Console.WriteLine("SKIPPING " + BaseUrl); // comment this when intending to run a lot of tasks as it 
-                        Console.ForegroundColor = ConsoleColor.White;
-                        return null;
+                        /*Console.ForegroundColor = ConsoleColor.Blue;
+                        Console.WriteLine("SKIPPING " + BaseUrl);
+                        Console.ForegroundColor = ConsoleColor.White;*/
+                        return -1;
                     }
                 }
                 
@@ -110,6 +110,7 @@ namespace HttpLoad
                 {
                     response = await HttpClient.GetAsync(BaseUrl + uri);
                 }
+
                 string responseBody;
                 using (var sr = new StreamReader(await response.Content.ReadAsStreamAsync(), Encoding.GetEncoding("iso-8859-1")))
                 {
@@ -130,14 +131,14 @@ namespace HttpLoad
                     if(RecentConnectionFailures > 1) // highlights the text when a URL was reachable again when there are RecentConnectionFailures
                     {
                         Console.ForegroundColor = ConsoleColor.Cyan;
-                        Console.WriteLine("***Success!*** RecentFailures from " + RecentConnectionFailures + " to " + (RecentConnectionFailures - 1) + " @ " + BaseUrl + " w/ " + responseBytesCount + "[Bytes]");
+                        Console.WriteLine("RecentFailures from " + RecentConnectionFailures + " to " + (RecentConnectionFailures - 1) + " @ " + BaseUrl + " w/ " + responseBytesCount + "[Bytes]");
                         Console.ForegroundColor = ConsoleColor.White;
                     }
                     RecentConnectionFailures--;
                 }
 
                 TotalSuccessfulRequests++;
-                return new BandwithEvent() { BytesReceived = responseBytesCount, EventTime = DateTime.Now };
+                return responseBytesCount;
             }
             catch (System.Threading.Tasks.TaskCanceledException e)
             {
@@ -160,7 +161,7 @@ namespace HttpLoad
 
             RecentConnectionFailures++;
             Console.WriteLine("RecentFailures is now " + RecentConnectionFailures);
-            return null;
+            return -2;
         }
 
         public double GetTotalSuccessPercentage()
